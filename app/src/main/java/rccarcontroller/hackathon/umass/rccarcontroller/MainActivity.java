@@ -37,7 +37,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private static final int REQUEST_ENABLE_BT = 1;
 
     private SensorManager sensorManager;
-    private Sensor accelerometer;
+    private Sensor rotationVector;
 
     BluetoothAdapter mBluetoothAdapter;
     BluetoothSocket btSocket;
@@ -80,8 +80,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     @Override
@@ -115,7 +115,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     @Override
     protected void onResume(){
         super.onResume();
-        sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     public void pairedBluetooth(View view){
@@ -215,8 +215,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     public void onSensorChanged(SensorEvent event) {
         Sensor sensor = event.sensor;
 
-        if(sensor.getType() == Sensor.TYPE_ACCELEROMETER){
-            
+        if(sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
+
         }
     }
 
