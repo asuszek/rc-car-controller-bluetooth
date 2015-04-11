@@ -247,19 +247,22 @@ public class MainActivity extends ActionBarActivity {
     public void forward(View view) {
 
         OutputStream out = null;
-        try {
-            out = btSocket.getOutputStream();
-        } catch (IOException e) {
-            Log.d("Write data", "Bug BEFORE data was sent");
-        }
-        String message = "f";
-        //char sender = '1';
+        if(btSocket != null) {
+            try {
 
-        byte[] msgBuffer = message.getBytes();
-        try {
-            out.write(msgBuffer);
-        } catch (IOException e) {
-            Log.d("Write data", "Bug AFTER data was sent");
+                out = btSocket.getOutputStream();
+            } catch (IOException e) {
+                Log.d("Write data", "Bug BEFORE data was sent");
+            }
+            String message = "1";
+            //char sender = '1';
+
+            byte[] msgBuffer = message.getBytes();
+            try {
+                out.write(msgBuffer);
+            } catch (IOException e) {
+                Log.d("Write data", "Bug AFTER data was sent");
+            }
         }
 
     }
@@ -267,19 +270,21 @@ public class MainActivity extends ActionBarActivity {
     public void right(View view) {
 
         OutputStream out = null;
-        try {
-            out = btSocket.getOutputStream();
-        } catch (IOException e) {
-            Log.d("Write data", "Bug BEFORE data was sent");
-        }
-        String message = "r";
-        //char sender = '1';
+        if(btSocket != null) {
+            try {
+                out = btSocket.getOutputStream();
+            } catch (IOException e) {
+                Log.d("Write data", "Bug BEFORE data was sent");
+            }
+            String message = "r";
+            //char sender = '1';
 
-        byte[] msgBuffer = message.getBytes();
-        try {
-            out.write(msgBuffer);
-        } catch (IOException e) {
-            Log.d("Write data", "Bug AFTER data was sent");
+            byte[] msgBuffer = message.getBytes();
+            try {
+                out.write(msgBuffer);
+            } catch (IOException e) {
+                Log.d("Write data", "Bug AFTER data was sent");
+            }
         }
 
     }
@@ -287,19 +292,21 @@ public class MainActivity extends ActionBarActivity {
     public void left(View view) {
 
         OutputStream out = null;
-        try {
-            out = btSocket.getOutputStream();
-        } catch (IOException e) {
-            Log.d("Write data", "Bug BEFORE data was sent");
-        }
-        String message = "l";
-        //char sender = '1';
+        if(btSocket != null) {
+            try {
+                out = btSocket.getOutputStream();
+            } catch (IOException e) {
+                Log.d("Write data", "Bug BEFORE data was sent");
+            }
+            String message = "l";
+            //char sender = '1';
 
-        byte[] msgBuffer = message.getBytes();
-        try {
-            out.write(msgBuffer);
-        } catch (IOException e) {
-            Log.d("Write data", "Bug AFTER data was sent");
+            byte[] msgBuffer = message.getBytes();
+            try {
+                out.write(msgBuffer);
+            } catch (IOException e) {
+                Log.d("Write data", "Bug AFTER data was sent");
+            }
         }
 
     }
@@ -307,19 +314,21 @@ public class MainActivity extends ActionBarActivity {
     public void backward(View view) {
 
         OutputStream out = null;
-        try {
-            out = btSocket.getOutputStream();
-        } catch (IOException e) {
-            Log.d("Write data", "Bug BEFORE data was sent");
-        }
-        String message = "b";
-        //char sender = '1';
+        if(btSocket != null) {
+            try {
+                out = btSocket.getOutputStream();
+            } catch (IOException e) {
+                Log.d("Write data", "Bug BEFORE data was sent");
+            }
+            String message = "0";
+            //char sender = '1';
 
-        byte[] msgBuffer = message.getBytes();
-        try {
-            out.write(msgBuffer);
-        } catch (IOException e) {
-            Log.d("Write data", "Bug AFTER data was sent");
+            byte[] msgBuffer = message.getBytes();
+            try {
+                out.write(msgBuffer);
+            } catch (IOException e) {
+                Log.d("Write data", "Bug AFTER data was sent");
+            }
         }
 
     }
