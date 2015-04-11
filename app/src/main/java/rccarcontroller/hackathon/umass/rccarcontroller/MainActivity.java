@@ -198,14 +198,6 @@ public class MainActivity extends ActionBarActivity {
             Log.d("", "Connecting to ... " + device);
             mBluetoothAdapter.cancelDiscovery();
 
-<<<<<<< HEAD
-        try{
-            btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
-            btSocket.connect();
-            Log.d("","Connection made");
-        } catch (IOException e){
-=======
->>>>>>> d6098b4b7b5e8948c52a6bf99d7c4b35e98e05d7
             try{
                 btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(
                         "00001101-0000-1000-8000-00805F9B34FB"));
