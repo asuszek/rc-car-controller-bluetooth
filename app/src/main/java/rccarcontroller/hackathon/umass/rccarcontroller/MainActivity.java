@@ -3,19 +3,24 @@ package rccarcontroller.hackathon.umass.rccarcontroller;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 
+import java.io.IOException;
 import java.util.Set;
+import java.util.UUID;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -23,7 +28,9 @@ public class MainActivity extends ActionBarActivity {
     private static final int REQUEST_ENABLE_BT = 1;
 
     BluetoothAdapter mBluetoothAdapter;
+    BluetoothSocket btSocket;
     ArrayAdapter<String> mArrayAdapter;
+    String uuidString;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -53,6 +60,8 @@ public class MainActivity extends ActionBarActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
+        uuidString = Settings.Secure.getString(
+                getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
 
 
@@ -134,7 +143,7 @@ public class MainActivity extends ActionBarActivity {
 
     }
 
-    public void DiscoverDevices(View view){
+    public void discoverDevices(View view){
         boolean success = mBluetoothAdapter.startDiscovery();
 
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -160,25 +169,38 @@ public class MainActivity extends ActionBarActivity {
 
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
+                            // cell name in the form "Name\nAddress"
                             String strName = mArrayAdapter.getItem(which);
-                            AlertDialog.Builder builderInner = new AlertDialog.Builder(
-                                    MainActivity.this);
-                            builderInner.setMessage(strName);
-                            builderInner.setTitle("Your Selected Item is");
-                            builderInner.setPositiveButton("Ok",
-                                    new DialogInterface.OnClickListener() {
-
-                                        @Override
-                                        public void onClick(
-                                                DialogInterface dialog,
-                                                int which) {
-                                            dialog.dismiss();
-                                        }
-                                    });
-                            builderInner.show();
+                            // retrieve the Mac Address from the string
+                            String macAddress = strName.split("\n")[1].trim();
+                            Log.d("Mac Address", macAddress);
+                            // connect to the device
+                            connect(macAddress);
                         }
                     });
             builderSingle.show();
         }
+    }
+
+    private void connect(String address){
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        Log.d("", "Connecting to ... " + device);
+        mBluetoothAdapter.cancelDiscovery();
+
+        try{
+            btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(uuidString));
+            btSocket.connect();
+            Log.d("","Connection made");
+        } catch (IOException e){
+            try{
+                btSocket.close();
+            } catch (IOException e2){
+                Log.d("Socket did not close", e2.getLocalizedMessage());
+            }
+            Log.d("Socket creation failed", e.getLocalizedMessage());
+        }
+
+        // TODO
+        // Switch Activity to controller
     }
 }
