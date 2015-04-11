@@ -254,7 +254,7 @@ public class MainActivity extends ActionBarActivity {
             } catch (IOException e) {
                 Log.d("Write data", "Bug BEFORE data was sent");
             }
-            String message = "1";
+            String message = "255";
             //char sender = '1';
 
             byte[] msgBuffer = message.getBytes();
