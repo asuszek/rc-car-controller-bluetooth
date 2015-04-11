@@ -34,7 +34,7 @@
         android:id="@+id/discover"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:onClick="DiscoverDevices"
+        android:onClick="discoverDevices"
         />
     </LinearLayout>
 

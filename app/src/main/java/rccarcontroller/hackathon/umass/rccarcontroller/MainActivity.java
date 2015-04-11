@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.AsyncTask;
 import android.provider.Settings;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
@@ -19,6 +20,8 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -30,7 +33,6 @@ public class MainActivity extends ActionBarActivity {
     BluetoothAdapter mBluetoothAdapter;
     BluetoothSocket btSocket;
     ArrayAdapter<String> mArrayAdapter;
-    String uuidString;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -60,8 +62,6 @@ public class MainActivity extends ActionBarActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
-        uuidString = Settings.Secure.getString(
-                getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
 
 
@@ -175,32 +175,40 @@ public class MainActivity extends ActionBarActivity {
                             String macAddress = strName.split("\n")[1].trim();
                             Log.d("Mac Address", macAddress);
                             // connect to the device
-                            connect(macAddress);
+                            new CreateBluetoothSocket().execute(Arrays.asList(macAddress));
                         }
                     });
             builderSingle.show();
         }
     }
 
-    private void connect(String address){
-        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-        Log.d("", "Connecting to ... " + device);
-        mBluetoothAdapter.cancelDiscovery();
+    private class CreateBluetoothSocket extends AsyncTask<List<String>, Integer, Boolean>{
 
-        try{
-            btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(uuidString));
-            btSocket.connect();
-            Log.d("","Connection made");
-        } catch (IOException e){
+        @Override
+        protected Boolean doInBackground(List<String>... params) {
+            BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(params[0].get(0));
+            Log.d("", "Connecting to ... " + device);
+            mBluetoothAdapter.cancelDiscovery();
+
             try{
-                btSocket.close();
-            } catch (IOException e2){
-                Log.d("Socket did not close", e2.getLocalizedMessage());
+                btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(
+                        "00001101-0000-1000-8000-00805F9B34FB"));
+                btSocket.connect();
+
+                Log.d("","Connection made");
+            } catch (IOException e){
+                try{
+                    btSocket.close();
+                } catch (IOException e2){
+                    Log.d("Socket did not close", e2.getLocalizedMessage());
+                }
+                Log.d("Socket creation failed", e.getLocalizedMessage());
+                return false;
             }
-            Log.d("Socket creation failed", e.getLocalizedMessage());
+
+            return true;
         }
 
-        // TODO
-        // Switch Activity to controller
     }
+
 }
