@@ -302,49 +302,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     }
 
-    public void right(View view) {
-
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "r";
-            //char sender = '1';
-
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
-            }
-        }
-
-    }
-
-    public void left(View view) {
-
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "l";
-            //char sender = '1';
-
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
-            }
-        }
-
-    }
 
     public void backward(View view) {
 
