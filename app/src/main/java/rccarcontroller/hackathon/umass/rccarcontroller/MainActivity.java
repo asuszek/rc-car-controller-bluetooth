@@ -190,7 +190,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
-    private class CreateBluetoothSocket extends AsyncTask<List<String>, Integer, Boolean>{
+    private class CreateBluetoothSocket extends AsyncTask<List<String>, Integer, Boolean> {
 
         @Override
         protected Boolean doInBackground(List<String>... params) {
@@ -198,16 +198,16 @@ public class MainActivity extends ActionBarActivity {
             Log.d("", "Connecting to ... " + device);
             mBluetoothAdapter.cancelDiscovery();
 
-            try{
+            try {
                 btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(
                         "00001101-0000-1000-8000-00805F9B34FB"));
                 btSocket.connect();
 
-                Log.d("","Connection made");
-            } catch (IOException e){
-                try{
+                Log.d("", "Connection made");
+            } catch (IOException e) {
+                try {
                     btSocket.close();
-                } catch (IOException e2){
+                } catch (IOException e2) {
                     Log.d("Socket did not close", e2.getLocalizedMessage());
                 }
                 Log.d("Socket creation failed", e.getLocalizedMessage());
@@ -218,22 +218,48 @@ public class MainActivity extends ActionBarActivity {
         }
 
         @Override
-        protected void onPostExecute(Boolean connected){
-            if (connected){
-                OutputStream out = null;
-                try {
-                    out = btSocket.getOutputStream();
-                } catch (IOException e) {
-                    Log.d("Write data", "Bug BEFORE data was sent");
-                }
-                String message = "test data" + (new Date()).toString();
-                byte[] msgBuffer = message.getBytes();
-                try {
-                    out.write(msgBuffer);
-                } catch (IOException e) {
-                    Log.d("Write data", "Bug AFTER data was sent");
-                }
-            }
+        protected void onPostExecute(Boolean connected) {
+//            if (connected){
+//                OutputStream out = null;
+//                try {
+//                    out = btSocket.getOutputStream();
+//                } catch (IOException e) {
+//                    Log.d("Write data", "Bug BEFORE data was sent");
+//                }
+//                String message = "1";
+//                char
+//
+//                byte[] msgBuffer = message.getBytes();
+//                try {
+//                    out.write(msgBuffer);
+//                } catch (IOException e) {
+//                    Log.d("Write data", "Bug AFTER data was sent");
+//                }
+//            }
+//        }
+
+        }
+
+
+
+    }
+
+    public void doThing(View view) {
+
+        OutputStream out = null;
+        try {
+            out = btSocket.getOutputStream();
+        } catch (IOException e) {
+            Log.d("Write data", "Bug BEFORE data was sent");
+        }
+        String message = "1";
+        //char sender = '1';
+
+        byte[] msgBuffer = message.getBytes();
+        try {
+            out.write(msgBuffer);
+        } catch (IOException e) {
+            Log.d("Write data", "Bug AFTER data was sent");
         }
 
     }
