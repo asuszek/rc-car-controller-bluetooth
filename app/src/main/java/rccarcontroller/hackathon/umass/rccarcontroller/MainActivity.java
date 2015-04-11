@@ -12,7 +12,6 @@ import android.content.IntentFilter;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorEventListener2;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
@@ -22,17 +21,22 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 
+
+
 public class MainActivity extends ActionBarActivity implements SensorEventListener{
+
+    private enum Directions{FORWARD, BACKWARD, LEFT, RIGHT}
+
 
     private static final int REQUEST_ENABLE_BT = 1;
 
@@ -252,119 +256,69 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             return true;
         }
 
-        @Override
-        protected void onPostExecute(Boolean connected) {
-//            if (connected){
-//                OutputStream out = null;
-//                try {
-//                    out = btSocket.getOutputStream();
-//                } catch (IOException e) {
-//                    Log.d("Write data", "Bug BEFORE data was sent");
-//                }
-//                String message = "1";
-//                char
-//
-//                byte[] msgBuffer = message.getBytes();
-//                try {
-//                    out.write(msgBuffer);
-//                } catch (IOException e) {
-//                    Log.d("Write data", "Bug AFTER data was sent");
-//                }
-//            }
-//        }
-
-        }
-
-
-
     }
 
     public void forward(View view) {
 
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "1";
-            //char sender = '1';
-
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
-            }
-        }
+        new sendInformation().execute(Arrays.asList(Directions.FORWARD.toString()));
 
     }
 
-    public void right(View view) {
-
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "r";
-            //char sender = '1';
-
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
-            }
-        }
-
-    }
-
-    public void left(View view) {
-
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "l";
-            //char sender = '1';
-
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
-            }
-        }
-
-    }
 
     public void backward(View view) {
 
-        OutputStream out = null;
-        if(btSocket != null) {
-            try {
-                out = btSocket.getOutputStream();
-            } catch (IOException e) {
-                Log.d("Write data", "Bug BEFORE data was sent");
-            }
-            String message = "0";
-            //char sender = '1';
+        new sendInformation().execute(Arrays.asList(Directions.BACKWARD.toString()));
 
-            byte[] msgBuffer = message.getBytes();
-            try {
-                out.write(msgBuffer);
-            } catch (IOException e) {
-                Log.d("Write data", "Bug AFTER data was sent");
+    }
+
+    private class sendInformation extends AsyncTask<List<String>, Integer, String> {
+
+        @Override
+        protected String doInBackground(List<String>... params) {
+            OutputStream out = null;
+            String message = "";
+            if (btSocket != null) {
+                try {
+                    out = btSocket.getOutputStream();
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug BEFORE data was sent");
+                }
+                message = params[0].get(0).toString();
+                //char sender = '1';
+
+                byte[] msgBuffer = message.getBytes();
+                try {
+                    out.write(msgBuffer);
+                    Log.d("SentfromBAckground", "Success");
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug AFTER data was sent");
+                }
+
+            }
+            return message;
+        }
+
+        @Override
+        protected void onPostExecute(String message){
+            if("".equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(), "No Bluetooth Connection", Toast.LENGTH_SHORT);
+                toast.setGravity(1,0,0);
+                toast.show();
+            }
+            if(Directions.FORWARD.toString().equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(), "You are going forward", Toast.LENGTH_SHORT);
+                toast.setGravity(1,0,0);
+                toast.show();
+            }
+
+            if(Directions.BACKWARD.toString().equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(), "You are going Backward", Toast.LENGTH_SHORT);
+                toast.setGravity(1,0,0);
+                toast.show();
             }
         }
+
+
 
     }
 
