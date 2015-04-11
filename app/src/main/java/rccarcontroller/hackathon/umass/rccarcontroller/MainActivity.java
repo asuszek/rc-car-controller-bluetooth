@@ -20,7 +20,9 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -210,6 +212,25 @@ public class MainActivity extends ActionBarActivity {
             }
 
             return true;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean connected){
+            if (connected){
+                OutputStream out = null;
+                try {
+                    out = btSocket.getOutputStream();
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug BEFORE data was sent");
+                }
+                String message = "test data" + (new Date()).toString();
+                byte[] msgBuffer = message.getBytes();
+                try {
+                    out.write(msgBuffer);
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug AFTER data was sent");
+                }
+            }
         }
 
     }
