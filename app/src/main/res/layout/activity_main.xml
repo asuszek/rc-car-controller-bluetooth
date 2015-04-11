@@ -19,7 +19,7 @@
         android:layout_height="wrap_content"
         android:text="Find Paired"
         android:id="@+id/findpaired"
-        android:onClick="PairedBluetooth"
+        android:onClick="pairedBluetooth"
         android:gravity="bottom"
         android:layout_weight="1"
         android:layout_alignParentBottom="true"

@@ -45,9 +45,12 @@ public class MainActivity extends ActionBarActivity {
                 // Get the BluetoothDevice object from the Intent
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
+                if(name == null){
+                    mArrayAdapter.add(device.getAddress());
+                }else{
+                    mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                }
 
-                // Add the name and address to an array adapter to show in a ListView
-                mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
             }
         }
     };
@@ -94,7 +97,7 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void PairedBluetooth(View view){
+    public void pairedBluetooth(View view){
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         // If there are paired devices
         if (pairedDevices.size() > 0) {
@@ -195,6 +198,14 @@ public class MainActivity extends ActionBarActivity {
             Log.d("", "Connecting to ... " + device);
             mBluetoothAdapter.cancelDiscovery();
 
+<<<<<<< HEAD
+        try{
+            btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"));
+            btSocket.connect();
+            Log.d("","Connection made");
+        } catch (IOException e){
+=======
+>>>>>>> d6098b4b7b5e8948c52a6bf99d7c4b35e98e05d7
             try{
                 btSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(
                         "00001101-0000-1000-8000-00805F9B34FB"));
