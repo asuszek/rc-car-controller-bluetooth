@@ -3,8 +3,11 @@ package rccarcontroller.hackathon.umass.rccarcontroller;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -22,6 +25,19 @@ public class MainActivity extends ActionBarActivity {
     BluetoothAdapter mBluetoothAdapter;
     ArrayAdapter<String> mArrayAdapter;
 
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            // When discovery finds a device
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // Get the BluetoothDevice object from the Intent
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                // Add the name and address to an array adapter to show in a ListView
+                mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -38,6 +54,8 @@ public class MainActivity extends ActionBarActivity {
         }
 
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
+
+
     }
 
     @Override
@@ -62,7 +80,7 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void LookForBluetooth(View view){
+    public void PairedBluetooth(View view){
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         // If there are paired devices
         if (pairedDevices.size() > 0) {
@@ -84,6 +102,7 @@ public class MainActivity extends ActionBarActivity {
 
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+                        mArrayAdapter.clear();
                         dialog.dismiss();
                     }
                 });
@@ -113,5 +132,53 @@ public class MainActivity extends ActionBarActivity {
                 });
         builderSingle.show();
 
+    }
+
+    public void DiscoverDevices(View view){
+        boolean success = mBluetoothAdapter.startDiscovery();
+
+        IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+        registerReceiver(mReceiver, filter); // Don't forget to unregister during onDestroy
+
+        if(success){
+            AlertDialog.Builder builderSingle = new AlertDialog.Builder(
+                    MainActivity.this);
+            builderSingle.setTitle("Select One Name:-");
+
+            builderSingle.setNegativeButton("cancel",
+                    new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            mArrayAdapter.clear();
+                            dialog.dismiss();
+                        }
+                    });
+
+            builderSingle.setAdapter(mArrayAdapter,
+                    new DialogInterface.OnClickListener() {
+
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            String strName = mArrayAdapter.getItem(which);
+                            AlertDialog.Builder builderInner = new AlertDialog.Builder(
+                                    MainActivity.this);
+                            builderInner.setMessage(strName);
+                            builderInner.setTitle("Your Selected Item is");
+                            builderInner.setPositiveButton("Ok",
+                                    new DialogInterface.OnClickListener() {
+
+                                        @Override
+                                        public void onClick(
+                                                DialogInterface dialog,
+                                                int which) {
+                                            dialog.dismiss();
+                                        }
+                                    });
+                            builderInner.show();
+                        }
+                    });
+            builderSingle.show();
+        }
     }
 }
