@@ -61,6 +61,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     Button forwardButton;
     Button backwardButton;
+    Button toggleButton;
+
+    private boolean toggleMode = true;
 
     private Runnable runningThread;
     private Handler handler;
@@ -86,6 +89,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
         forwardButton = (Button) findViewById(R.id.forward);
         backwardButton = (Button) findViewById(R.id.backward);
+        toggleButton = (Button) findViewById(R.id.toggleMode);
 
         runningThread = decelerate;
         handler = new Handler();
@@ -186,9 +190,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             if (speed < -124) speed = -124;
 
             handler.postDelayed(this, DELAY);
-            addIntToQueue(speed+125);
+            addIntToQueue(speed + 125);
 
-            Log.d("reverse",Integer.toString(speed));
+            Log.d("reverse", Integer.toString(speed));
         }
     };
 
@@ -210,6 +214,20 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             //Log.d("decelerate",Integer.toString(speed));
         }
     };
+
+    public void toggleDriveMode(View view){
+        if(toggleMode) {
+            forwardButton.setVisibility(View.INVISIBLE);
+            backwardButton.setVisibility(View.INVISIBLE);
+            toggleMode = false;
+            toggleButton.setText("Switch to Buttons");
+        }else{
+            forwardButton.setVisibility(View.VISIBLE);
+            backwardButton.setVisibility(View.VISIBLE);
+            toggleMode = true;
+            toggleButton.setText("Switch to Gyro Mode");
+        }
+    }
 
     private void addIntToQueue(int speed){
         queueLock.lock();
