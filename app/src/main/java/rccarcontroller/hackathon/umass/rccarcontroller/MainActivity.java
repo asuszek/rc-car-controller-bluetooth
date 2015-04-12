@@ -24,6 +24,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -64,11 +65,14 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     BluetoothAdapter mBluetoothAdapter;
     BluetoothSocket btSocket;
     ArrayAdapter<String> mArrayAdapter;
+    private String macAddress;
 
     Button forwardButton;
     Button backwardButton;
     Button toggleButton;
     Button stepButton;
+
+    TextView speedometer;
 
     private boolean gyroMode;
     private boolean stepMode;
@@ -99,6 +103,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         backwardButton = (Button) findViewById(R.id.backward);
         toggleButton = (Button) findViewById(R.id.toggleMode);
         stepButton = (Button) findViewById(R.id.stepMode);
+
+        speedometer = (TextView) findViewById(R.id.speedometer);
 
         gyroMode = false;
 
@@ -188,7 +194,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             speed += ACCELERATE_SPEED;
             if (speed > 124) speed = 124;
 
+            String displaySpeed = Double.toString(Math.abs((speed*5.27)/125));
+            displaySpeed = displaySpeed.substring(0,3);
+
             handler.postDelayed(this, DELAY);
+            speedometer.setText(displaySpeed);
             addIntToQueue(speed+125);
 
             Log.d("drive",Integer.toString(speed));
@@ -201,7 +211,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             speed -= ACCELERATE_SPEED;
             if (speed < -124) speed = -124;
 
+            String displaySpeed = Double.toString(Math.abs((speed*5.27)/125));
+            displaySpeed = displaySpeed.substring(0,3);
+
             handler.postDelayed(this, DELAY);
+            speedometer.setText(displaySpeed);
             addIntToQueue(speed + 125);
 
             Log.d("reverse", Integer.toString(speed));
@@ -220,7 +234,12 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 if (speed < 0) speed = 0;
             }
 
+            String displaySpeed = Double.toString(Math.abs((speed*5.27)/125));
+            displaySpeed = displaySpeed.substring(0,3);
+
+
             handler.postDelayed(this, DELAY);
+            speedometer.setText(displaySpeed);
             addIntToQueue(speed+125);
 
             //Log.d("decelerate",Integer.toString(speed));
@@ -264,6 +283,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
             stepMode = true;
             handler.removeCallbacks(runningThread);
+            runningThread = decelerate;
+            handler.postDelayed(runningThread, DELAY);
 
             sensorManager.unregisterListener(this, gravField);
             sensorManager.unregisterListener(this, magneticField);
@@ -313,6 +334,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
         try {
             if(btSocket != null) {
+                addIntToQueue(252);
                 btSocket.close();
             }
         } catch (IOException e) {
@@ -325,8 +347,30 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     }
 
     @Override
+    protected void onDestroy(){
+        super.onDestroy();
+
+        try {
+            if(btSocket != null) {
+                addIntToQueue(252);
+                btSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        handler.removeCallbacks(runningThread);
+        runningThread = null;
+
+        sensorManager.unregisterListener(this);
+
+        unregisterReceiver(mReceiver);
+    }
+
+    @Override
     protected void onResume(){
         super.onResume();
+        if (macAddress != null) new CreateBluetoothSocket().execute(Arrays.asList(macAddress));
+
         runningThread = decelerate;
         handler.postDelayed(runningThread, DELAY);
 
@@ -440,7 +484,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                             // cell name in the form "Name\nAddress"
                             String strName = mArrayAdapter.getItem(which);
                             // retrieve the Mac Address from the string
-                            String macAddress = strName.split("\n")[1].trim();
+                            macAddress = strName.split("\n")[1].trim();
                             Log.d("Mac Address", macAddress);
                             // connect to the device
                             new CreateBluetoothSocket().execute(Arrays.asList(macAddress));
@@ -510,32 +554,32 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
         @Override
         protected void onPostExecute(String message){
-            if("".equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(),
-                        "No Bluetooth Connection", Toast.LENGTH_SHORT);
-                toast.setGravity(1,0,0);
-                toast.show();
-            }
-            if(Integer.toString(LEFT).equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(),
-                        "You are going left", Toast.LENGTH_SHORT);
-                toast.setGravity(1,0,0);
-                toast.show();
-            }
-
-            if(Integer.toString(CENTER).equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(),
-                        "You are going straight", Toast.LENGTH_SHORT);
-                toast.setGravity(1,0,0);
-                toast.show();
-            }
-
-            if(Integer.toString(RIGHT).equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(),
-                        "You are going right", Toast.LENGTH_SHORT);
-                toast.setGravity(1,0,0);
-                toast.show();
-            }
+//            if("".equals(message)){
+//                Toast toast = Toast.makeText(getApplicationContext(),
+//                        "No Bluetooth Connection", Toast.LENGTH_SHORT);
+//                toast.setGravity(1,0,0);
+//                toast.show();
+//            }
+//            if(Integer.toString(LEFT).equals(message)){
+//                Toast toast = Toast.makeText(getApplicationContext(),
+//                        "You are going left", Toast.LENGTH_SHORT);
+//                toast.setGravity(1,0,0);
+//                toast.show();
+//            }
+//
+//            if(Integer.toString(CENTER).equals(message)){
+//                Toast toast = Toast.makeText(getApplicationContext(),
+//                        "You are going straight", Toast.LENGTH_SHORT);
+//                toast.setGravity(1,0,0);
+//                toast.show();
+//            }
+//
+//            if(Integer.toString(RIGHT).equals(message)){
+//                Toast toast = Toast.makeText(getApplicationContext(),
+//                        "You are going right", Toast.LENGTH_SHORT);
+//                toast.setGravity(1,0,0);
+//                toast.show();
+//            }
         }
 
     }
@@ -679,7 +723,15 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             }
 
             if (gyroMode){
-                if (mLastRoll > (-90.f + VERTICAL_OFFSET + ROLL_THRESHOLD)){
+                if (mLastRoll > 10.f){
+                    if (runningThread != decelerate){
+                        handler.removeCallbacks(runningThread);
+                        runningThread = decelerate;
+                        handler.postDelayed(runningThread, DELAY);
+                        Log.d("SWITCHING", "Brake");
+                    }
+                }
+                else if (mLastRoll > (-90.f + VERTICAL_OFFSET + ROLL_THRESHOLD)){
                     //Log.d("DRIVE", Float.toString(mLastRoll));
                     if (runningThread != drive){
                         handler.removeCallbacks(runningThread);

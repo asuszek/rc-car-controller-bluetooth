@@ -43,7 +43,7 @@
         android:layout_height="wrap_content"
         android:text="Forward"
         android:id="@+id/forward"
-
+        android:textSize="20dp"
         android:layout_alignTop="@+id/backward"
         android:layout_alignEnd="@+id/linearLayout"
         android:layout_alignParentBottom="true" />
@@ -54,7 +54,7 @@
         android:layout_height="wrap_content"
         android:text="Backward"
         android:id="@+id/backward"
-
+        android:textSize="20dp"
         android:layout_alignParentStart="true"
         android:layout_below="@+id/linearLayout"
         android:layout_alignParentBottom="true" />
@@ -69,7 +69,6 @@
         android:layout_centerHorizontal="true" />
 
     <Button
-        style="?android:attr/buttonStyleSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Switch to Step Mode"
@@ -77,5 +76,31 @@
         android:onClick="toggleStepMode"
         android:layout_below="@+id/toggleMode"
         android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:textSize="100dp"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="0.0"
+        android:id="@+id/speedometer"
+        android:layout_below="@+id/stepMode"
+        android:layout_alignStart="@+id/stepMode"
+        android:layout_alignEnd="@+id/toggleMode" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingLeft="5dp"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="ft/sec"
+        android:textSize="40dp"
+        android:textAlignment="center"
+        android:id="@+id/MPH"
+        android:layout_alignBottom="@+id/forward"
+        android:layout_alignStart="@+id/speedometer"
+        android:layout_below="@+id/speedometer"
+        android:layout_toStartOf="@+id/forward" />
 
 </RelativeLayout>
