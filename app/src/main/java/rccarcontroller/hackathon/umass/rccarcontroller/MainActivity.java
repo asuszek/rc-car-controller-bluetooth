@@ -50,8 +50,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int DELAY = 100;
-    private static final int ACCELERATE_SPEED = 15;
-    private static final int BREAK_SPEED = 10;
+    private static final int ACCELERATE_SPEED = 11;
+    private static final int BREAK_SPEED = 18;
 
 
     private SensorManager sensorManager;
@@ -66,6 +66,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     Button forwardButton;
     Button backwardButton;
     Button toggleButton;
+    Button stepButton;
 
     private boolean gyroMode;
     private boolean stepMode;
@@ -95,6 +96,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         forwardButton = (Button) findViewById(R.id.forward);
         backwardButton = (Button) findViewById(R.id.backward);
         toggleButton = (Button) findViewById(R.id.toggleMode);
+        stepButton = (Button) findViewById(R.id.stepMode);
 
         gyroMode = false;
 
@@ -255,12 +257,22 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         if(!stepMode){
             forwardButton.setVisibility(View.INVISIBLE);
             backwardButton.setVisibility(View.INVISIBLE);
+            toggleButton.setVisibility(View.INVISIBLE);
+            stepButton.setText("Switch to Dive Mode");
+
             stepMode = true;
             handler.removeCallbacks(runningThread);
             sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_GAME);
         }
         else{
+            forwardButton.setVisibility(View.VISIBLE);
+            backwardButton.setVisibility(View.VISIBLE);
+            toggleButton.setVisibility(View.VISIBLE);
+            stepButton.setText("Switch to Step Mode");
+
             stepMode = false;
+            runningThread = decelerate;
+            handler.postDelayed(runningThread, DELAY);
             sensorManager.unregisterListener(this, stepSensor);
         }
     }
