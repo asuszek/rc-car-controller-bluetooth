@@ -44,7 +44,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private static final int CENTER = 254;
     private static final int RIGHT = 255;
 
-    private static final float PITCH_THRESHOLD = 30.f;
+    private static final float PITCH_THRESHOLD = 20.f;
+    private static final float ROLL_THRESHOLD = 20.f;
+    private static final float VERTICAL_OFFSET = 10.f;
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int DELAY = 100;
@@ -63,7 +65,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     Button backwardButton;
     Button toggleButton;
 
-    private boolean toggleMode = true;
+    private boolean gyroMode;
 
     private Runnable runningThread;
     private Handler handler;
@@ -90,6 +92,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         forwardButton = (Button) findViewById(R.id.forward);
         backwardButton = (Button) findViewById(R.id.backward);
         toggleButton = (Button) findViewById(R.id.toggleMode);
+
+        gyroMode = false;
 
         runningThread = decelerate;
         handler = new Handler();
@@ -124,8 +128,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         magneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         gravField = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
-        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
 
         forwardButton.setOnTouchListener(new View.OnTouchListener() {
 
@@ -215,20 +219,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         }
     };
 
-    public void toggleDriveMode(View view){
-        if(toggleMode) {
-            forwardButton.setVisibility(View.INVISIBLE);
-            backwardButton.setVisibility(View.INVISIBLE);
-            toggleMode = false;
-            toggleButton.setText("Switch to Buttons");
-        }else{
-            forwardButton.setVisibility(View.VISIBLE);
-            backwardButton.setVisibility(View.VISIBLE);
-            toggleMode = true;
-            toggleButton.setText("Switch to Gyro Mode");
-        }
-    }
-
     private void addIntToQueue(int speed){
         queueLock.lock();
         speedQueue.add(speed);
@@ -237,6 +227,24 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     }
 
     //endregion
+
+    public void toggleDriveMode(View view){
+        if(!gyroMode) {
+            forwardButton.setVisibility(View.INVISIBLE);
+            backwardButton.setVisibility(View.INVISIBLE);
+            gyroMode = true;
+            toggleButton.setText("Switch to Buttons");
+        }else{
+            forwardButton.setVisibility(View.VISIBLE);
+            backwardButton.setVisibility(View.VISIBLE);
+            gyroMode = false;
+            toggleButton.setText("Switch to Gyro Mode");
+        }
+
+        handler.removeCallbacks(runningThread);
+        runningThread = decelerate;
+        handler.postDelayed(runningThread, DELAY);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -283,8 +291,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         runningThread = decelerate;
         handler.postDelayed(runningThread, DELAY);
 
-        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
+        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
     }
 
     // region BLUETOOTH
@@ -532,7 +540,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     // endregion
 
-    //TODO
     @Override
     public void onSensorChanged(SensorEvent event) {
         Sensor sensor = event.sensor;
@@ -547,7 +554,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
     }
 
     private void grav(SensorEvent event){
@@ -572,8 +578,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             mLastPitch = mFilters[0].append(pitch);
             mLastRoll = mFilters[1].append(roll);
 
-            //Log.d("PITCH", Float.toString(pitch));
-            //Log.d("ROLL", Float.toString(roll));
+            //Log.d("PITCH", Float.toString(mLastPitch));
+            //Log.d("ROLL", Float.toString(mLastRoll));
 
             switch (currentDirection){
                 case LEFT:{
@@ -583,7 +589,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                         (new SendDirection()).execute(
                                 Arrays.asList(Integer.toString(currentDirection)));
                     }
-                    return;
+                    break;
                 }
                 case RIGHT:{
                     if (mLastPitch > -PITCH_THRESHOLD){
@@ -592,7 +598,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                         (new SendDirection()).execute(
                                 Arrays.asList(Integer.toString(currentDirection)));
                     }
-                    return;
+                    break;
                 }
                 case CENTER:{
                     if (mLastPitch > PITCH_THRESHOLD){
@@ -602,7 +608,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                         if (mLastPitch < -PITCH_THRESHOLD){
                             currentDirection = RIGHT;
                         }
-                        else return;
+                        else break;
                     }
                     Log.d("SENDING", Integer.toString(currentDirection));
                     (new SendDirection()).execute(
@@ -610,6 +616,35 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 }
             }
 
+            if (gyroMode){
+                if (mLastRoll > (-90.f + VERTICAL_OFFSET + ROLL_THRESHOLD)){
+                    //Log.d("DRIVE", Float.toString(mLastRoll));
+                    if (runningThread != drive){
+                        handler.removeCallbacks(runningThread);
+                        runningThread = drive;
+                        handler.postDelayed(runningThread, DELAY);
+                        Log.d("SWITCHING", "Drive");
+                    }
+                }
+                else if (mLastRoll < (-90.f + VERTICAL_OFFSET - ROLL_THRESHOLD)){
+                    //Log.d("REVERSE", Float.toString(mLastRoll));
+                    if (runningThread != reverse){
+                        handler.removeCallbacks(runningThread);
+                        runningThread = reverse;
+                        handler.postDelayed(runningThread, DELAY);
+                        Log.d("SWITCHING", "Reverse");
+                    }
+                }
+                else{
+                    //Log.d("BRAKE", Float.toString(mLastRoll));
+                    if (runningThread != decelerate){
+                        handler.removeCallbacks(runningThread);
+                        runningThread = decelerate;
+                        handler.postDelayed(runningThread, DELAY);
+                        Log.d("SWITCHING", "Brake");
+                    }
+                }
+            }
         }
     }
 
