@@ -68,4 +68,14 @@
         android:layout_below="@+id/linearLayout"
         android:layout_centerHorizontal="true" />
 
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Switch to Step Mode"
+        android:id="@+id/button"
+        android:onClick="toggleStepMode"
+        android:layout_below="@+id/toggleMode"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>

@@ -53,9 +53,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private static final int ACCELERATE_SPEED = 15;
     private static final int BREAK_SPEED = 10;
 
+
     private SensorManager sensorManager;
     private Sensor magneticField;
     private Sensor gravField;
+    private Sensor stepSensor;
 
     BluetoothAdapter mBluetoothAdapter;
     BluetoothSocket btSocket;
@@ -66,6 +68,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     Button toggleButton;
 
     private boolean gyroMode;
+    private boolean stepMode;
 
     private Runnable runningThread;
     private Handler handler;
@@ -127,6 +130,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         magneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         gravField = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR);
 
         sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
         sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
@@ -241,9 +245,24 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             toggleButton.setText("Switch to Gyro Mode");
         }
 
+
         handler.removeCallbacks(runningThread);
         runningThread = decelerate;
         handler.postDelayed(runningThread, DELAY);
+    }
+
+    public void toggleStepMode(View view){
+        if(!stepMode){
+            forwardButton.setVisibility(View.INVISIBLE);
+            backwardButton.setVisibility(View.INVISIBLE);
+            stepMode = true;
+            handler.removeCallbacks(runningThread);
+            sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_GAME);
+        }
+        else{
+            stepMode = false;
+            sensorManager.unregisterListener(this, stepSensor);
+        }
     }
 
     @Override
@@ -550,6 +569,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         if (sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
             magnetic(event);
         }
+        if (sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
+            step(event);
+        }
     }
 
     @Override
@@ -566,6 +588,10 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         if (mLastMag != null){
             computeOrientation();
         }
+    }
+
+    private void step(SensorEvent event){
+        
     }
 
     private void computeOrientation(){
