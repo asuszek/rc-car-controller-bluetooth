@@ -14,13 +14,16 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -47,6 +50,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     BluetoothSocket btSocket;
     ArrayAdapter<String> mArrayAdapter;
 
+    Button forwardButton;
+    Button backwardButton;
+
+    private int speed = 0;
+
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -71,6 +79,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        forwardButton = (Button) findViewById(R.id.forward);
+        backwardButton = (Button) findViewById(R.id.backward);
+
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             // Device does not support Bluetooth
@@ -86,6 +97,75 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
+        forwardButton.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandler;
+
+                @Override public boolean onTouch (View v, MotionEvent event){
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            if (mHandler != null) return true;
+                            mHandler = new Handler();
+                            mHandler.postDelayed(mAction, 500);
+                            break;
+                        case MotionEvent.ACTION_UP:
+                            if (mHandler == null) return true;
+                            mHandler.removeCallbacks(mAction);
+                            mHandler = null;
+                            break;
+                    }
+                    return false;
+                }
+
+                Runnable mAction = new Runnable() {
+                    @Override
+                    public void run() {
+                        if(speed < 255) {
+                            speed++;
+                            Log.d("speed", Integer.toString(speed));
+                            //forward(speed);
+                            mHandler.postDelayed(this, 500);
+                        }
+                    }
+                };
+
+        });
+
+        backwardButton.setOnTouchListener(new View.OnTouchListener() {
+            private Handler mHandler;
+
+            @Override public boolean onTouch (View v, MotionEvent event){
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (mHandler != null) return true;
+                        mHandler = new Handler();
+                        mHandler.postDelayed(mAction, 500);
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        if (mHandler == null) return true;
+                        mHandler.removeCallbacks(mAction);
+                        mHandler = null;
+                        break;
+                }
+                return false;
+            }
+
+            Runnable mAction = new Runnable() {
+                @Override
+                public void run() {
+                    if(speed > -255) {
+                        speed--;
+                        Log.d("speed", Integer.toString(speed));
+                        //backward(speed);
+                        mHandler.postDelayed(this, 500);
+                    }
+                }
+            };
+        });
+    }
+
+    public void speedIncDev(int curSpeed){
+
     }
 
     @Override
@@ -258,16 +338,16 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     }
 
-    public void forward(View view) {
+    public void forward(int forwardSpeed) {
 
-        new sendInformation().execute(Arrays.asList(Directions.FORWARD.toString()));
+        new sendInformation().execute(Arrays.asList(Integer.toString(forwardSpeed)));
 
     }
 
 
-    public void backward(View view) {
+    public void backward(int backwardSpeed) {
 
-        new sendInformation().execute(Arrays.asList(Directions.BACKWARD.toString()));
+        new sendInformation().execute(Arrays.asList(Integer.toString(backwardSpeed)));
 
     }
 
