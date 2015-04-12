@@ -29,14 +29,20 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MainActivity extends ActionBarActivity implements SensorEventListener{
 
-    private enum Directions{FORWARD, BACKWARD, LEFT, RIGHT}
-
+    private static final int LEFT = 256;
+    private static final int CENTER = 257;
+    private static final int RIGHT = 258;
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int DELAY = 100;
@@ -57,24 +63,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private Handler handler;
     private int speed;
 
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-            String name = "";
-            // When discovery finds a device
-            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
-                // Get the BluetoothDevice object from the Intent
-                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-
-                if(name == null){
-                    mArrayAdapter.add(device.getAddress());
-                }else{
-                    mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
-                }
-
-            }
-        }
-    };
+    private Queue<Integer> speedQueue;
+    private Lock queueLock;
+    private Condition speedMonitor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +74,14 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
         forwardButton = (Button) findViewById(R.id.forward);
         backwardButton = (Button) findViewById(R.id.backward);
+
+        runningThread = null;
+        handler = new Handler();
+        speed = 0;
+
+        speedQueue = new LinkedList<>();
+        queueLock = new ReentrantLock();
+        speedMonitor = queueLock.newCondition();
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
@@ -99,10 +98,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
-
-        runningThread = null;
-        handler = new Handler();
-        speed = 0;
 
         forwardButton.setOnTouchListener(new View.OnTouchListener() {
 
@@ -152,7 +147,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         public void run() {
             speed += ACCELERATE_SPEED;
             if (speed > 255) speed = 255;
-            if (speed < 255) handler.postDelayed(this, DELAY);
+
+            if (speed < 255){
+                handler.postDelayed(this, DELAY);
+                addIntToQueue(speed);
+            }
             Log.d("drive",Integer.toString(speed));
         }
     };
@@ -162,7 +161,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         public void run() {
             speed -= ACCELERATE_SPEED;
             if (speed < -255) speed = -255;
-            if (speed > -255) handler.postDelayed(this, DELAY);
+
+            if (speed > -255){
+                handler.postDelayed(this, DELAY);
+                addIntToQueue(speed);
+            }
             Log.d("reverse",Integer.toString(speed));
         }
     };
@@ -174,14 +177,24 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 speed += BREAK_SPEED;
                 if (speed > 0) speed = 0;
             }
-            if (speed > 0){
+            else if (speed > 0){
                 speed -= BREAK_SPEED;
                 if (speed < 0) speed = 0;
             }
-            if (speed != 0) handler.postDelayed(this, DELAY);
+            if (speed != 0){
+                handler.postDelayed(this, DELAY);
+                addIntToQueue(speed);
+            }
             Log.d("decelerate",Integer.toString(speed));
         }
     };
+
+    private void addIntToQueue(int speed){
+        queueLock.lock();
+        speedQueue.add(speed);
+        speedMonitor.signal();
+        queueLock.unlock();
+    }
 
     //endregion
 
@@ -219,6 +232,27 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
+    // region BLUETOOTH
+
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            String name = "";
+            // When discovery finds a device
+            if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                // Get the BluetoothDevice object from the Intent
+                BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                if(name == null){
+                    mArrayAdapter.add(device.getAddress());
+                }else{
+                    mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                }
+
+            }
+        }
+    };
+
     public void pairedBluetooth(View view){
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
         // If there are paired devices
@@ -229,8 +263,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 mArrayAdapter.add(device.getName() + "\n" + device.getAddress());
             }
         }
-
-
 
         AlertDialog.Builder builderSingle = new AlertDialog.Builder(
                 MainActivity.this);
@@ -312,20 +344,6 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         }
     }
 
-    @Override
-    public void onSensorChanged(SensorEvent event) {
-        Sensor sensor = event.sensor;
-
-        if(sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-
-        }
-    }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-    }
-
     private class CreateBluetoothSocket extends AsyncTask<List<String>, Integer, Boolean> {
 
         @Override
@@ -350,23 +368,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 return false;
             }
 
+            new Thread(writeSpeedToBluetooth).start();
             return true;
         }
-
-    }
-
-    public void forward(int forwardSpeed) {
-
-        
-
-        new sendInformation().execute(Arrays.asList(Integer.toString(forwardSpeed)));
-
-    }
-
-
-    public void backward(int backwardSpeed) {
-
-        new sendInformation().execute(Arrays.asList(Integer.toString(backwardSpeed)));
 
     }
 
@@ -383,11 +387,10 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                     Log.d("Write data", "Bug BEFORE data was sent");
                 }
                 message = params[0].get(0).toString();
-                //char sender = '1';
+                int data = Integer.parseInt(message);
 
-                byte[] msgBuffer = message.getBytes();
                 try {
-                    out.write(msgBuffer);
+                    out.write(data);
                     Log.d("SentfromBAckground", "Success");
                 } catch (IOException e) {
                     Log.d("Write data", "Bug AFTER data was sent");
@@ -400,24 +403,88 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         @Override
         protected void onPostExecute(String message){
             if("".equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(), "No Bluetooth Connection", Toast.LENGTH_SHORT);
+                Toast toast = Toast.makeText(getApplicationContext(),
+                        "No Bluetooth Connection", Toast.LENGTH_SHORT);
                 toast.setGravity(1,0,0);
                 toast.show();
             }
-            if(Directions.FORWARD.toString().equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(), "You are going forward", Toast.LENGTH_SHORT);
+            if(Integer.toString(LEFT).equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(),
+                        "You are going left", Toast.LENGTH_SHORT);
                 toast.setGravity(1,0,0);
                 toast.show();
             }
 
-            if(Directions.BACKWARD.toString().equals(message)){
-                Toast toast = Toast.makeText(getApplicationContext(), "You are going Backward", Toast.LENGTH_SHORT);
+            if(Integer.toString(CENTER).equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(),
+                        "You are going straight", Toast.LENGTH_SHORT);
+                toast.setGravity(1,0,0);
+                toast.show();
+            }
+
+            if(Integer.toString(RIGHT).equals(message)){
+                Toast toast = Toast.makeText(getApplicationContext(),
+                        "You are going right", Toast.LENGTH_SHORT);
                 toast.setGravity(1,0,0);
                 toast.show();
             }
         }
 
+    }
 
+    private Runnable writeSpeedToBluetooth = new Runnable() {
+        @Override
+        public void run() {
+            if (!btSocket.isConnected()){
+                Log.d("socket is NALL", "You done goofed");
+                System.exit(1);
+            }
+
+            OutputStream out = null;
+
+            while(true){
+                queueLock.lock();
+
+                while(speedQueue.isEmpty()){
+                    try {
+                        speedMonitor.await();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                int data = speedQueue.poll();
+                queueLock.unlock();
+
+                try {
+                    out = btSocket.getOutputStream();
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug BEFORE data was sent");
+                }
+                try {
+                    out.write(data);
+                    Log.d("SentfromBAckground", "Success");
+                } catch (IOException e) {
+                    Log.d("Write data", "Bug AFTER data was sent");
+                }
+            }
+        }
+    };
+
+    // endregion
+
+    //TODO
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        Sensor sensor = event.sensor;
+
+        if(sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
+
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
     }
 
