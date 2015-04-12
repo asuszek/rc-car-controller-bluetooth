@@ -40,9 +40,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class MainActivity extends ActionBarActivity implements SensorEventListener{
 
-    private static final int LEFT = 256;
-    private static final int CENTER = 257;
-    private static final int RIGHT = 258;
+    private static final int LEFT = 253;
+    private static final int CENTER = 254;
+    private static final int RIGHT = 255;
+
+    private static final float PITCH_THRESHOLD = 30.f;
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int DELAY = 100;
@@ -50,7 +52,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private static final int BREAK_SPEED = 10;
 
     private SensorManager sensorManager;
-    private Sensor rotationVector;
+    private Sensor magneticField;
+    private Sensor gravField;
 
     BluetoothAdapter mBluetoothAdapter;
     BluetoothSocket btSocket;
@@ -66,6 +69,15 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     private Queue<Integer> speedQueue;
     private Lock queueLock;
     private Condition speedMonitor;
+
+    private float[] mRotationMatrix;
+    private float[] mOrientationVector;
+    private float[] mLastGrav;
+    private float[] mLastMag;
+    private Filter[] mFilters;
+    private float mLastPitch;
+    private float mLastRoll;
+    private int currentDirection;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +96,14 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         queueLock = new ReentrantLock();
         speedMonitor = queueLock.newCondition();
 
+        mRotationMatrix = new float[16];
+        mOrientationVector = new float[3];
+        mLastGrav = new float[3];
+        mLastMag = new float[3];
+        mFilters = new Filter[2];
+        for(int i=0; i<2; i++) mFilters[i] = new Filter();
+        currentDirection = CENTER;
+
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             // Device does not support Bluetooth
@@ -97,8 +117,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
+        magneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        gravField = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+
+        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_NORMAL);
 
         forwardButton.setOnTouchListener(new View.OnTouchListener() {
 
@@ -184,7 +207,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             handler.postDelayed(this, DELAY);
             addIntToQueue(speed+125);
 
-            Log.d("decelerate",Integer.toString(speed));
+            //Log.d("decelerate",Integer.toString(speed));
         }
     };
 
@@ -222,6 +245,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     @Override
     protected void onPause(){
         super.onPause();
+
         try {
             if(btSocket != null) {
                 btSocket.close();
@@ -231,6 +255,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         }
         handler.removeCallbacks(runningThread);
         runningThread = null;
+
         sensorManager.unregisterListener(this);
     }
 
@@ -239,7 +264,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         super.onResume();
         runningThread = decelerate;
         handler.postDelayed(runningThread, DELAY);
-        sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
+
+        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     // region BLUETOOTH
@@ -384,7 +411,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
     }
 
-    private class sendInformation extends AsyncTask<List<String>, Integer, String> {
+    private class SendDirection extends AsyncTask<List<String>, Integer, String> {
 
         @Override
         protected String doInBackground(List<String>... params) {
@@ -396,7 +423,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 } catch (IOException e) {
                     Log.d("Write data", "Bug BEFORE data was sent");
                 }
-                message = params[0].get(0).toString();
+                message = params[0].get(0);
+                //Log.d("SENDING", message);
+
                 short data = Short.parseShort(message);
 
                 try {
@@ -465,7 +494,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
                 String stringData = Integer.toString(speedQueue.poll());
                 short data = Short.valueOf(stringData);
-                Log.d("outputting", Short.toString(data));
+                //Log.d("outputting", Short.toString(data));
                 queueLock.unlock();
 
                 try {
@@ -490,14 +519,100 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     public void onSensorChanged(SensorEvent event) {
         Sensor sensor = event.sensor;
 
-        if(sensor.getType() == Sensor.TYPE_ROTATION_VECTOR){
-
+        if (sensor.getType() == Sensor.TYPE_ACCELEROMETER){
+            grav(event);
+        }
+        if (sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD){
+            magnetic(event);
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
+    }
+
+    private void grav(SensorEvent event){
+        System.arraycopy(event.values, 0, mLastGrav, 0, 3);
+    }
+
+    private void magnetic(SensorEvent event){
+        System.arraycopy(event.values, 0, mLastMag, 0, 3);
+
+        if (mLastMag != null){
+            computeOrientation();
+        }
+    }
+
+    private void computeOrientation(){
+        if (SensorManager.getRotationMatrix(mRotationMatrix, null, mLastGrav, mLastMag)){
+            SensorManager.getOrientation(mRotationMatrix, mOrientationVector);
+
+            float pitch = mOrientationVector[1] * 57.2957795f;
+            float roll = mOrientationVector[2] * 57.2957795f;
+
+            mLastPitch = mFilters[0].append(pitch);
+            mLastRoll = mFilters[1].append(roll);
+
+            //Log.d("PITCH", Float.toString(pitch));
+            //Log.d("ROLL", Float.toString(roll));
+
+            switch (currentDirection){
+                case LEFT:{
+                    if (mLastPitch < PITCH_THRESHOLD){
+                        currentDirection = CENTER;
+                        Log.d("SENDING", Integer.toString(currentDirection));
+                        (new SendDirection()).execute(
+                                Arrays.asList(Integer.toString(currentDirection)));
+                    }
+                    return;
+                }
+                case RIGHT:{
+                    if (mLastPitch > -PITCH_THRESHOLD){
+                        currentDirection = CENTER;
+                        Log.d("SENDING", Integer.toString(currentDirection));
+                        (new SendDirection()).execute(
+                                Arrays.asList(Integer.toString(currentDirection)));
+                    }
+                    return;
+                }
+                case CENTER:{
+                    if (mLastPitch > PITCH_THRESHOLD){
+                        currentDirection = LEFT;
+                    }
+                    else{
+                        if (mLastPitch < -PITCH_THRESHOLD){
+                            currentDirection = RIGHT;
+                        }
+                        else return;
+                    }
+                    Log.d("SENDING", Integer.toString(currentDirection));
+                    (new SendDirection()).execute(
+                            Arrays.asList(Integer.toString(currentDirection)));
+                }
+            }
+
+        }
+    }
+
+    private class Filter {
+        static final int AVERAGE_BUFFER = 2;
+        float []m_arr = new float[AVERAGE_BUFFER];
+        int m_idx = 0;
+
+        public float append(float val) {
+            m_arr[m_idx] = val;
+            m_idx++;
+            if (m_idx == AVERAGE_BUFFER)
+                m_idx = 0;
+            return avg();
+        }
+        public float avg() {
+            float sum = 0;
+            for (float x: m_arr)
+                sum += x;
+            return sum / AVERAGE_BUFFER;
+        }
     }
 
 }
