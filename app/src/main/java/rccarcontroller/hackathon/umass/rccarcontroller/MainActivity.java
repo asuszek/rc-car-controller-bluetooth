@@ -75,8 +75,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         forwardButton = (Button) findViewById(R.id.forward);
         backwardButton = (Button) findViewById(R.id.backward);
 
-        runningThread = null;
+        runningThread = decelerate;
         handler = new Handler();
+        handler.postDelayed(runningThread, DELAY);
         speed = 0;
 
         speedQueue = new LinkedList<>();
@@ -146,12 +147,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         @Override
         public void run() {
             speed += ACCELERATE_SPEED;
-            if (speed > 255) speed = 255;
+            if (speed > 124) speed = 124;
 
-            if (speed < 255){
-                handler.postDelayed(this, DELAY);
-                addIntToQueue(speed);
-            }
+            handler.postDelayed(this, DELAY);
+            addIntToQueue(speed+125);
+
             Log.d("drive",Integer.toString(speed));
         }
     };
@@ -160,12 +160,11 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         @Override
         public void run() {
             speed -= ACCELERATE_SPEED;
-            if (speed < -255) speed = -255;
+            if (speed < -124) speed = -124;
 
-            if (speed > -255){
-                handler.postDelayed(this, DELAY);
-                addIntToQueue(speed);
-            }
+            handler.postDelayed(this, DELAY);
+            addIntToQueue(speed+125);
+
             Log.d("reverse",Integer.toString(speed));
         }
     };
@@ -181,10 +180,10 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 speed -= BREAK_SPEED;
                 if (speed < 0) speed = 0;
             }
-            if (speed != 0){
-                handler.postDelayed(this, DELAY);
-                addIntToQueue(speed);
-            }
+
+            handler.postDelayed(this, DELAY);
+            addIntToQueue(speed+125);
+
             Log.d("decelerate",Integer.toString(speed));
         }
     };
@@ -223,12 +222,23 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     @Override
     protected void onPause(){
         super.onPause();
+        try {
+            if(btSocket != null) {
+                btSocket.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        handler.removeCallbacks(runningThread);
+        runningThread = null;
         sensorManager.unregisterListener(this);
     }
 
     @Override
     protected void onResume(){
         super.onResume();
+        runningThread = decelerate;
+        handler.postDelayed(runningThread, DELAY);
         sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
@@ -387,7 +397,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                     Log.d("Write data", "Bug BEFORE data was sent");
                 }
                 message = params[0].get(0).toString();
-                int data = Integer.parseInt(message);
+                short data = Short.parseShort(message);
 
                 try {
                     out.write(data);
@@ -453,7 +463,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                     }
                 }
 
-                int data = speedQueue.poll();
+                String stringData = Integer.toString(speedQueue.poll());
+                short data = Short.valueOf(stringData);
+                Log.d("outputting", Short.toString(data));
                 queueLock.unlock();
 
                 try {
