@@ -33,15 +33,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-
-
-
 public class MainActivity extends ActionBarActivity implements SensorEventListener{
 
     private enum Directions{FORWARD, BACKWARD, LEFT, RIGHT}
 
 
     private static final int REQUEST_ENABLE_BT = 1;
+    private static final int DELAY = 100;
+    private static final int ACCELERATE_SPEED = 15;
+    private static final int BREAK_SPEED = 10;
 
     private SensorManager sensorManager;
     private Sensor rotationVector;
@@ -53,7 +53,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     Button forwardButton;
     Button backwardButton;
 
-    private int speed = 0;
+    private Runnable runningThread;
+    private Handler handler;
+    private int speed;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -95,82 +97,90 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         mArrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-
         rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         sensorManager.registerListener(this, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
 
+        runningThread = null;
+        handler = new Handler();
+        speed = 0;
 
         forwardButton.setOnTouchListener(new View.OnTouchListener() {
-            private Handler mHandler;
-
-                @Override public boolean onTouch (View v, MotionEvent event){
-                    switch (event.getAction()) {
-                        case MotionEvent.ACTION_DOWN:
-                            if (mHandler != null) return true;
-                            mHandler = new Handler();
-                            mHandler.postDelayed(mAction, 500);
-                            break;
-                        case MotionEvent.ACTION_UP:
-                            if (mHandler == null) return true;
-                            mHandler.removeCallbacks(mAction);
-                            mHandler = null;
-                            break;
-                    }
-                    return false;
-                }
-
-                Runnable mAction = new Runnable() {
-                    @Override
-                    public void run() {
-                        if(speed < 255) {
-                            speed++;
-                            Log.d("speed", Integer.toString(speed));
-                            //forward(speed);
-                            mHandler.postDelayed(this, 500);
-                        }
-                    }
-                };
-
-        });
-
-        backwardButton.setOnTouchListener(new View.OnTouchListener() {
-            private Handler mHandler;
 
             @Override public boolean onTouch (View v, MotionEvent event){
                 switch (event.getAction()) {
                     case MotionEvent.ACTION_DOWN:
-                        if (mHandler != null) return true;
-                        mHandler = new Handler();
-                        mHandler.postDelayed(mAction, 500);
-                        break;
+                        handler.removeCallbacks(runningThread);
+                        runningThread = drive;
+                        handler.postDelayed(runningThread, DELAY);
+                        return true;
+
                     case MotionEvent.ACTION_UP:
-                        if (mHandler == null) return true;
-                        mHandler.removeCallbacks(mAction);
-                        mHandler = null;
-                        break;
+                        handler.removeCallbacks(runningThread);
+                        runningThread = decelerate;
+                        handler.postDelayed(runningThread, DELAY);
+                        return true;
                 }
                 return false;
             }
+        });
 
-            Runnable mAction = new Runnable() {
-                @Override
-                public void run() {
-                    if(speed > -255) {
-                        speed--;
-                        Log.d("speed", Integer.toString(speed));
-                        //backward(speed);
-                        mHandler.postDelayed(this, 500);
-                    }
+        backwardButton.setOnTouchListener(new View.OnTouchListener() {
+
+            @Override public boolean onTouch (View v, MotionEvent event){
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        handler.removeCallbacks(runningThread);
+                        runningThread = reverse;
+                        handler.postDelayed(runningThread, DELAY);
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                        handler.removeCallbacks(runningThread);
+                        runningThread = decelerate;
+                        handler.postDelayed(runningThread, DELAY);
+                        return true;
                 }
-            };
+                return false;
+            }
         });
     }
 
-    public void speedIncDev(int curSpeed){
+    // region RUNNABLES
 
+    Runnable drive = new Runnable() {
+        @Override
+        public void run() {
+            speed += ACCELERATE_SPEED;
+            if (speed > 255) speed = 255;
+            if (speed < 255) handler.postDelayed(this, DELAY);
+        }
+    };
 
+    Runnable reverse = new Runnable() {
+        @Override
+        public void run() {
+            speed -= ACCELERATE_SPEED;
+            if (speed < -255) speed = -255;
+            if (speed > -255) handler.postDelayed(this, DELAY);
+        }
+    };
 
-    }
+    Runnable decelerate = new Runnable() {
+        @Override
+        public void run() {
+            if (speed < 0){
+                speed += BREAK_SPEED;
+                if (speed > 0) speed = 0;
+            }
+            if (speed > 0){
+                speed -= BREAK_SPEED;
+                if (speed < 0) speed = 0;
+            }
+            if (speed != 0) handler.postDelayed(this, DELAY);
+        }
+    };
+
+    //endregion
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
