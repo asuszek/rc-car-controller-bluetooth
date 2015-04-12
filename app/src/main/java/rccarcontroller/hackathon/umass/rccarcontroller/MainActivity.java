@@ -153,6 +153,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             speed += ACCELERATE_SPEED;
             if (speed > 255) speed = 255;
             if (speed < 255) handler.postDelayed(this, DELAY);
+            Log.d("drive",Integer.toString(speed));
         }
     };
 
@@ -162,6 +163,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             speed -= ACCELERATE_SPEED;
             if (speed < -255) speed = -255;
             if (speed > -255) handler.postDelayed(this, DELAY);
+            Log.d("reverse",Integer.toString(speed));
         }
     };
 
@@ -177,6 +179,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
                 if (speed < 0) speed = 0;
             }
             if (speed != 0) handler.postDelayed(this, DELAY);
+            Log.d("decelerate",Integer.toString(speed));
         }
     };
 
@@ -353,6 +356,8 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
     }
 
     public void forward(int forwardSpeed) {
+
+        
 
         new sendInformation().execute(Arrays.asList(Integer.toString(forwardSpeed)));
 
