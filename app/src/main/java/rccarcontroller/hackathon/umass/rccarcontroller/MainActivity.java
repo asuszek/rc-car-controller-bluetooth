@@ -33,6 +33,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.UUID;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -262,6 +264,9 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
 
             stepMode = true;
             handler.removeCallbacks(runningThread);
+
+            sensorManager.unregisterListener(this, gravField);
+            sensorManager.unregisterListener(this, magneticField);
             sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_GAME);
         }
         else{
@@ -273,7 +278,10 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             stepMode = false;
             runningThread = decelerate;
             handler.postDelayed(runningThread, DELAY);
+
             sensorManager.unregisterListener(this, stepSensor);
+            sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
+            sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
         }
     }
 
@@ -322,8 +330,12 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         runningThread = decelerate;
         handler.postDelayed(runningThread, DELAY);
 
-        sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
-        sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
+        if (stepMode) sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_GAME);
+        else{
+            sensorManager.registerListener(this, magneticField, SensorManager.SENSOR_DELAY_GAME);
+            sensorManager.registerListener(this, gravField, SensorManager.SENSOR_DELAY_GAME);
+        }
+
     }
 
     // region BLUETOOTH
@@ -582,7 +594,7 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
             magnetic(event);
         }
         if (sensor.getType() == Sensor.TYPE_STEP_DETECTOR) {
-            step(event);
+            step();
         }
     }
 
@@ -602,8 +614,20 @@ public class MainActivity extends ActionBarActivity implements SensorEventListen
         }
     }
 
-    private void step(SensorEvent event){
-        
+    private void step(){
+        handler.removeCallbacks(runningThread);
+        runningThread = drive;
+        handler.postDelayed(runningThread, DELAY);
+
+        Timer timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                handler.removeCallbacks(runningThread);
+                runningThread = decelerate;
+                handler.postDelayed(runningThread, DELAY);
+            }
+        }, 500);
     }
 
     private void computeOrientation(){
