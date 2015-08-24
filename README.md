@@ -13,9 +13,6 @@ the car's motor.
 Transmission over Bluetooth to the Arduino mounted on the car is all done concurrently and is completely
 thread safe.
 
-Note: The app depends on a modified RC car (modified with an Arduino and Bluetooth Receiver), 
-and also simple C code to be run on the Arduino which is not provided here. 
-
 This project was designed and built for fun, and therefore does not provide a thorough API to be used
 universally. However, I encourage anyone to use this code as a basis for their own controller so that 
 you can focus on adding extra functionality.
